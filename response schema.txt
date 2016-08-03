@@ -1,0 +1,16 @@
+response 
+
+data responses
+{
+	keys: ["keyname"],
+	data: [
+		{
+			keyname, value_id, value, timestamp
+		}
+	]
+}
+
+error responses
+{
+	error_message: ""
+}
