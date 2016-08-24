@@ -6,7 +6,6 @@ require_once("functions.php");
 
 $action = $_GET["action"];
 
-
 //ensure we have a tag and client_key
 $av = get_arg_validator();
 $args = $av->validateArgs($_GET, array(
@@ -20,11 +19,7 @@ switch ($action){
 		break;
 	case "value":
 		handle_value_req();
-		break;
-	case "valuesSince":
-		$av->validateArgs($_GET, array(
-			"since" => array("int"),
-		));
+		break;	
 	case "values":
 		handle_values_req();
 		break;

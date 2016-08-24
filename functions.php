@@ -33,12 +33,17 @@ function handle_value_req (){
 			$key = $args["key"];
 			$value = get_latest_value($tag, $key);
 
-			send_response(array($value),array($key));			
+			if (!$value){ //if there is no value yet - thus also no key
+				$key = null;
+				$value = null;
+			}
+
+			send_response(array($value),array($key));
 			break;
 			
 		case "POST": //add a value		
 			$av = get_arg_validator();
-			$args = $av->validateArgs($_GET, array(
+			$args = $av->validateArgs($_REQUEST, array(
 				"tag" => array("notblank"),
 				"key" => array("notblank"),
 				"value" => array("string"),
@@ -60,7 +65,7 @@ function get_latest_value($tag_name, $key_name){
 	
 	$db = get_db_connection();
 	$stmt = $db->prepare("SELECT 
-							key_name as key, value_id, value_data as value, strftime('%s',created) as created
+							key_name as key, value_id, value_data as value, created
 						FROM 
 							tTag 
 							INNER JOIN tKey ON (tTag.tag_id = tKey.tag_id)
@@ -160,19 +165,29 @@ function handle_values_req(){
 			$args = $av->validateArgs($_GET, array(
 				"tag" => array("notblank"),
 				"key" => array("optional", "notblank"),
-				"since" => array("optional", "int"),
+				"since" => array("optional", "notblank"), // either a timestamp, or one of (start_of_day)
 			));
 			$tag = $args["tag"];
 			$since = null;
 			$key = null;
-			if(isset($args["since"]))
+			if(isset($args["since"])){
 				$since = $args["since"];
+				if(!is_numeric($since)){
+					switch($since){
+						case "start_of_day":
+							$since =  strtotime('today midnight');
+							break;						
+						default:
+							send_error("invalid value for since: " . $since);
+					}
+				}
+			}
 			if(isset($args["key"]))
 				$key = $args["key"];
 			
 			
 			$values = get_values($tag, $key, $since);
-			
+
 			$keys = array();
 			foreach($values as $v){
 				$keys[$v["key"]] = null;
@@ -209,7 +224,7 @@ function get_values($tag_name, $key_name = null, $since = null){
 		$since_sql = "AND created > :since";
 	
 	$sql = "SELECT
-				key_name as key, value_id, value_data as value, strftime('%s',created) as created
+				key_name as key, value_id, value_data as value, created
 			FROM 
 				tTag 
 				INNER JOIN tKey ON (tTag.tag_id = tKey.tag_id)
@@ -234,6 +249,7 @@ function get_values($tag_name, $key_name = null, $since = null){
 	$stmt->execute();
 	
 	$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 	return $rows;
 }
 
@@ -262,13 +278,18 @@ function get_client_id($client_key){
 // --- HELPERS --- //
 
 function print_debug($text, $level = 1){
-	if(1){
+
+	if(0){
 		$debugInfo = debug_backtrace(1);
 		if(count($debugInfo) > 1)
 			$callingfn = $debugInfo[1]["function"];
 		else
-			$callingfn = "[origin unknown]";
-		echo $callingfn . ": " . $text . PHP_EOL;
+			$callingfn = "[origin unknown]";		
+	
+		$file = fopen("/tmp/EAPS.log", "a");
+		
+		fwrite($file, date("Y/m/d H:i:s") . ": ". $level. ": " . $callingfn . "\t: " . $text . PHP_EOL);
+		fclose($file);
 	}
 }
 
@@ -321,6 +342,7 @@ function send_response($dataset, $keys = null, $status = 200){
 
 function send_error($message, $code = 400){
 	rest_response(json_encode(array("error_message" => $message)), $code);
+	print_debug("sent error response: " .$message, DEBUG);
 }
 
 function get_arg_validator(){
