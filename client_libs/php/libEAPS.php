@@ -12,8 +12,6 @@ class EAPS_client{
 	}
 	
 	public function get_values($tag, $key = false, $since = false){
-		if(!$tag )
-			handle_error("tag must be supplied");
 		
 		$get = array(
 			"tag" => $tag
@@ -30,13 +28,19 @@ class EAPS_client{
 		return $response;
 	}
 	
-	//make http req usign curl to the EAPS service - using the action $action, get vars in $get, post vars in $post
-	private function EAPS_req($action, $get = null, $post = null){
+	public function add_value($tag, $key, $value){
+		$get = array("tag" => $tag);
+		$post = array("key" => $key, "value" => $value);
+		$this->EAPS_req("value", $get, $post);
+	}
+	
+	//make http req usign curl to the EAPS service - using the action $action, get vars in $query_string, post vars in $post
+	private function EAPS_req($action, $query_string = null, $post = null){
 		$ch = curl_init(); 
 
 		$get_str = "";
-		if($get){				
-			foreach($get as $k => $v){
+		if($query_string){				
+			foreach($query_string as $k => $v){
 				$get_str .= "&" . urlencode($k) . "=" . urlencode($v);
 			}		 
 		}
@@ -47,13 +51,13 @@ class EAPS_client{
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
 		if($post){
-			curl_setopt(CURLOPT_POST, TRUE);
+			curl_setopt($ch, CURLOPT_POST, TRUE);
 			$post_str = "";
 			foreach($post as $k => $v){
 				$post_str .= urlencode($k) . "=" . urlencode($v) . "&";
 			}
 			rtrim($post_str, "&");
-			curl_setopt(CURLOPT_POSTFIELDS, $post_str);
+			curl_setopt($ch, CURLOPT_POSTFIELDS, $post_str);
 		}
 
 		$output = curl_exec($ch);

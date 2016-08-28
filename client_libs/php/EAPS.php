@@ -4,11 +4,13 @@
 
 require_once("libEAPS.php");
 
-$ec = new EAPS_Client("https://ssl.xionic.co.uk/debug/EAPS/", "f1495127-68d2-4402-9103-5663798b25c8");
+$ec = new EAPS_Client("https://ssl.xionic.co.uk/debug/EAPS/", "76245766-cfca-416f-a141-47fc2a14b59f");
 
-$resp = $ec->get_values("drugs");
+$resp = $ec->get_values("newtag");
 
-var_dump($resp->keys);
+var_dump($resp);
+
+$ec->add_value("newtag", "testkey", "testvalue1");
 
 	
 
