@@ -173,12 +173,10 @@ function handle_values_req(){
 			if(isset($args["since"])){
 				$since = $args["since"];
 				if(!is_numeric($since)){
-					switch($since){
-						case "start_of_day":
-							$since =  strtotime('today midnight');
-							break;						
-						default:
-							send_error("invalid value for since: " . $since);
+					//allow for any date strings parsable by strtotime
+					$since = strtotime($since);
+					if($since === false){
+						send_error("value for since must be a timestamp, or a string parsable by strtotime");
 					}
 				}
 			}
@@ -343,6 +341,7 @@ function send_response($dataset, $keys = null, $status = 200){
 function send_error($message, $code = 400){
 	rest_response(json_encode(array("error_message" => $message)), $code);
 	print_debug("sent error response: " .$message, DEBUG);
+	exit();
 }
 
 function get_arg_validator(){

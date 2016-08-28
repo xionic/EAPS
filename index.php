@@ -4,7 +4,10 @@ require_once("config.php");
 require_once("lib/PHPArgValidator/PHPArgValidator.class.php");
 require_once("functions.php");
 
-$action = $_GET["action"];
+if(isset($_GET["action"]))
+	$action = $_GET["action"];
+else 
+	send_error("missing argument action");
 
 //ensure we have a tag and client_key
 $av = get_arg_validator();

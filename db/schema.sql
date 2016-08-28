@@ -1,6 +1,7 @@
 CREATE TABLE tClient (
 	client_id INTEGER PRIMARY KEY AUTOINCREMENT,
 	client_key CHAR(64) NOT NULL,
+	client_name CHAR(64) NOT NULL,
 	
 	UNIQUE(client_key)
 );

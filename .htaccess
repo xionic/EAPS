@@ -1,0 +1,4 @@
+
+#RewriteRule ^(.*)$ test$0 [END]
+#RewriteCond %{QUERY_STRING} (.*)
+#RewriteRule ^.*EAPS.*$ testing [R]
