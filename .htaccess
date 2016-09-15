@@ -2,3 +2,6 @@
 #RewriteRule ^(.*)$ test$0 [END]
 #RewriteCond %{QUERY_STRING} (.*)
 #RewriteRule ^.*EAPS.*$ testing [R]
+<Files admin.php>
+	Require ip 192.168.1
+</Files>
