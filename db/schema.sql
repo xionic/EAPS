@@ -3,7 +3,8 @@ CREATE TABLE tClient (
 	client_key CHAR(64) NOT NULL,
 	client_name CHAR(64) NOT NULL,
 	
-	UNIQUE(client_key)
+	UNIQUE(client_key),
+	UNIQUE(client_name)
 );
 
 CREATE TABLE tTag (

@@ -1,5 +1,42 @@
 <?php
 
+function get_clients(){
+	$db = get_db_connection();
+	$stmt = $db->prepare(
+		"SELECT client_id, client_key, client_name
+		FROM tClient
+	");
+	$stmt->execute();
+	$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+	return $rows;
+}
+
+function handle_tags_req(){
+	switch (get_req_type()){
+		case "GET":
+			$tags = get_tags();
+			send_response(null, $tags);
+		case "POST": //Not applicable, tags are inserted when values are inserted.
+			send_error("Cannot directly add a key. New keys are created as required when values are inserted", 400);
+	}	
+}
+
+function get_tags($client_key){	
+	
+	$db = get_db_connection();
+	$stmt = $db->prepare(
+		"SELECT tag_id, tag_name
+		FROM tTag
+			INNER JOIN tClient ON (tTag.client_id = tClient.client_id)
+		WHERE 
+			tClient.client_key = :client_key"
+	);
+	$stmt->bindValue(":client_key",$client_key,PDO::PARAM_STR);
+	$stmt->execute();
+	$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+	return $rows;
+}
+
 function handle_keys_req(){
 	switch (get_req_type()){
 		case "GET":		
@@ -13,9 +50,16 @@ function handle_keys_req(){
 function get_keys($tag_name){	
 	$db = get_db_connection();
 	$stmt = $db->prepare(
-		"SELECT key_id, key_name FROM tKey INNER JOIN tTag ON (tKey.tag_id = tTag.tag_id) where tag_name = :tag_name"
+		"SELECT key_id, key_name 
+		FROM tKey 
+			INNER JOIN tTag ON (tKey.tag_id = tTag.tag_id) 
+			INNER JOIN tClient ON (tTag.client_id = tClient.client_id)
+		WHERE 
+			tag_name = :tag_name
+			AND tClient.client_id = :client_id"
 	);
 	$stmt->bindValue(":tag_name",$tag_name,PDO::PARAM_STR);
+	$stmt->bindValue(":client_id",get_current_client_id(),PDO::PARAM_INT);
 	$stmt->execute();
 	$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 	return $rows;
@@ -277,7 +321,7 @@ function get_client_id($client_key){
 
 function print_debug($text, $level = 1){
 
-	if(0){
+	if(1){
 		$debugInfo = debug_backtrace(1);
 		if(count($debugInfo) > 1)
 			$callingfn = $debugInfo[1]["function"];

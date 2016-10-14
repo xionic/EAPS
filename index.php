@@ -17,6 +17,9 @@ $args = $av->validateArgs($_GET, array(
 ));
 
 switch ($action){
+	case "tags":
+		handle_tags_req();
+		break;
 	case "keys":
 		handle_keys_req();
 		break;

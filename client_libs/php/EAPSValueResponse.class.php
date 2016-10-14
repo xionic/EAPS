@@ -1,4 +1,4 @@
- <?php
+<?php
 
 class EAPSValueResponse{	
 		public $keys = null;

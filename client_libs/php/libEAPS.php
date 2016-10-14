@@ -1,6 +1,7 @@
 <?php
 
 require_once("EAPSValueResponse.class.php");
+require_once("EAPSKeysResponse.class.php");
 
 class EAPS_client{
 	private $url = null;
@@ -10,7 +11,7 @@ class EAPS_client{
 		$this->url = $u;
 		$this->client_key = $c;		
 	}
-	
+
 	public function get_values($tag, $key = false, $since = false){
 		
 		$get = array(
@@ -25,6 +26,15 @@ class EAPS_client{
 		$values = json_decode($json, true);		
 		$response = new EAPSValueResponse($values["keys"], $values["data"]);
 		
+		return $response;
+	}
+	
+	public function get_keys($tag){
+		$get = array("tag" => $tag);
+		
+		$json = $this->EAPS_req("keys", $get);		
+		$values = json_decode($json, true);		
+		$response = new EAPSKeysResponse($values["keys"]);
 		return $response;
 	}
 	
