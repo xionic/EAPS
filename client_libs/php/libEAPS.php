@@ -29,6 +29,21 @@ class EAPS_client{
 		return $response;
 	}
 	
+	public function get_value($tag, $key){
+		
+		$get = array(
+			"tag" => $tag,
+			"key" => $key
+		);		
+		
+		$json = $this->EAPS_req("value", $get);
+		
+		$value = json_decode($json, true);
+		$response = new EAPSValueResponse($value["keys"], $value["data"]);
+		
+		return $response;
+	}
+	
 	public function get_keys($tag){
 		$get = array("tag" => $tag);
 		
@@ -71,6 +86,12 @@ class EAPS_client{
 		}
 
 		$output = curl_exec($ch);
+		
+		$return_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+		if ($return_code >=300 || $return_code < 200){
+			die("error: return code=$return_code error: " . curl_error($ch));
+		}
+		
 		curl_close($ch);
 		
 		return $output;
