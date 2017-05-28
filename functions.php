@@ -15,9 +15,10 @@ function handle_tags_req(){
 	switch (get_req_type()){
 		case "GET":
 			$tags = get_tags();
-			send_response(null, $tags);
+			break;
 		case "POST": //Not applicable, tags are inserted when values are inserted.
 			send_error("Cannot directly add a key. New keys are created as required when values are inserted", 400);
+			break;
 	}	
 }
 
@@ -42,8 +43,10 @@ function handle_keys_req(){
 		case "GET":		
 			$keys = get_keys(get_current_tag());
 			send_response(null, $keys);
+			break;
 		case "POST": //Keys are inserted as required when values are inserted
-			send_error("Cannot directly add a key. New keys are created as required when values are inserted", 400);
+			send_error("Cannot directly add a key. New keys are created as required when values are inserted", 400);#
+			break;
 	}	
 }
 
@@ -109,7 +112,7 @@ function get_latest_value($tag_name, $key_name){
 	
 	$db = get_db_connection();
 	$stmt = $db->prepare("SELECT 
-							key_name as key, value_id, value_data as value, created
+							key_name as `key`, value_id, value_data as value, created
 						FROM 
 							tTag 
 							INNER JOIN tKey ON (tTag.tag_id = tKey.tag_id)
@@ -264,9 +267,9 @@ function get_values($tag_name, $key_name = null, $since = null){
 		$key_sql = "AND key_name = :key_name";
 	if($since != null)
 		$since_sql = "AND created > :since";
-	
+		
 	$sql = "SELECT
-				key_name as key, value_id, value_data as value, created
+				key_name as `key`, value_id, value_data as value, created
 			FROM 
 				tTag 
 				INNER JOIN tKey ON (tTag.tag_id = tKey.tag_id)
@@ -280,7 +283,7 @@ function get_values($tag_name, $key_name = null, $since = null){
 				tValue.created DESC
 							
 	";
-						
+					
 	$stmt = $db->prepare($sql);
 	$stmt->bindValue(":client_id",$client_id,PDO::PARAM_INT);
 	$stmt->bindValue(":tag_name",$tag_name,PDO::PARAM_STR);
@@ -321,7 +324,12 @@ function get_client_id($client_key){
 
 function print_debug($text, $level = 1){
 
-	if(1){
+	if($level <= LOG_LEVEL){
+		global $req_id;
+		if ($req_id == null){
+			$req_id = uniqid();
+		}
+		
 		$debugInfo = debug_backtrace(1);
 		if(count($debugInfo) > 1)
 			$callingfn = $debugInfo[1]["function"];
@@ -330,7 +338,7 @@ function print_debug($text, $level = 1){
 	
 		$file = fopen("/tmp/EAPS.log", "a");
 		
-		fwrite($file, date("Y/m/d H:i:s") . ": ". $level. ": " . $callingfn . "\t: " . $text . PHP_EOL);
+		fwrite($file, date("Y/m/d H:i:s") . " ". $req_id . ": ". $level. ": " . $callingfn . "\t: " . $text . PHP_EOL);
 		fclose($file);
 	}
 }
@@ -357,13 +365,21 @@ function get_db_connection()
 {
 	global $db;
 	if($db == null){
-		$db = new PDO(PDO_DSN);
-		$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);	
+		if(DB_DRIVER == "sqlite"){
+			$db = new PDO(PDO_DSN);
+			$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);	
 
-		//enable foreign key enforcement - not enabled by default in sqlite and must be done per connection
-		//TODO make this only happen for sqlite
-		$db->exec("PRAGMA foreign_keys = ON");
+			//enable foreign key enforcement - not enabled by default in sqlite and must be done per connection
+			//TODO make this only happen for sqlite
+			$db->exec("PRAGMA foreign_keys = ON");
+		} else if (DB_DRIVER == "mysql"){
+			$db = new PDO(PDO_DSN, MYSQL_USER, MYSQL_PASS);
+		} else {
+			die ("Unknown db driver configured");
+		}
+		
 	}
+	$db->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION ); 
 	return $db;
 }
 
@@ -372,7 +388,7 @@ function rest_response($body, $status = 200)
 	http_response_code($status);
 	header('Content-Type: text/json');
 	echo $body;
-	exit;
+	print_debug("Returning response: \n" . $body, DEBUG_2);
 }
 
 //send a data response
