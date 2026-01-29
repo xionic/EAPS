@@ -1,5 +1,7 @@
 <?php
 
+use \xionic\Argh\Argh;
+
 function get_clients(){
 	$db = get_db_connection();
 	$stmt = $db->prepare(
@@ -71,11 +73,11 @@ function get_keys($tag_name){
 function handle_value_req (){
 	switch (get_req_type()){
 		case "GET": //get the latest value for the given key
-			$av = get_arg_validator();
-			$args = $av->validateArgs($_GET, array(
-				"tag" => array("notblank"),
-				"key" => array("notblank"),
-			));
+			$args = $_GET;
+			Argh::validate($args, [
+				"tag" => ["notblank"],
+				"key" => ["notblank"],
+			]);
 			$tag = $args["tag"];
 			$key = $args["key"];
 			$value = get_latest_value($tag, $key);
@@ -89,12 +91,12 @@ function handle_value_req (){
 			break;
 			
 		case "POST": //add a value		
-			$av = get_arg_validator();
-			$args = $av->validateArgs($_REQUEST, array(
-				"tag" => array("notblank"),
-				"key" => array("notblank"),
-				"value" => array("string"),
-			));
+			$args = $_REQUEST;
+			Argh::validate($args, [
+				"tag" => ["notblank"],
+				"key" => ["notblank"],
+				"value" => ["string"],
+			]);
 			
 			$client_id = get_current_client_id();
 			if($client_id == null) {
@@ -208,12 +210,12 @@ function add_value($client_id, $tag_name, $key_name, $value_data){
 function handle_values_req(){
 	switch (get_req_type()){
 		case "GET": //get the latest value for the given key
-			$av = get_arg_validator();
-			$args = $av->validateArgs($_GET, array(
-				"tag" => array("notblank"),
-				"key" => array("optional", "notblank"),
-				"since" => array("optional", "notblank"), // either a timestamp, or one of (start_of_day)
-			));
+			$args = $_GET;
+			Argh::validate($args, [
+				"tag" => ["notblank"],
+				"key" => ["optional", "notblank"],
+				"since" => ["optional", "notblank"], // either a timestamp, or one of (start_of_day)
+			]);
 			$tag = $args["tag"];
 			$since = null;
 			$key = null;
@@ -350,10 +352,10 @@ function get_req_type(){
 }
 
 function get_current_tag(){
-	$av = get_arg_validator();
-	$args = $av->validateArgs($_GET, array(
-		"tag" => array("notblank"),
-	));
+	$args = $_GET;
+	Argh::validate($args, [
+		"tag" => ["notblank"],
+	]);
 	return $args["tag"];
 }
 
@@ -403,17 +405,5 @@ function send_error($message, $code = 400){
 	print_debug("sent error response: " .$message, DEBUG);
 	exit();
 }
-
-function get_arg_validator(){
-	global $arg_validator;
-	if ($arg_validator == null){
-		$arg_validator = new ArgValidator(function($msg, $argName="", $argValue=""){
-			send_error("invalid args: $msg --- argname: $argName argvalue: $argValue");
-			die;
-		});
-	}
-	return $arg_validator;
-}
-
 
 ?>

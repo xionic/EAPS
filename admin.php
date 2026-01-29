@@ -106,7 +106,15 @@ if (isset($_GET['submit'])) {
             .then(r => r.json())
             .then(tags => {
                 var tagSel = document.getElementById('tag');
+                var current = tagSel.value;
+                var anyOpt = tagSel.querySelector('option[value=""]');
                 tagSel.innerHTML = '';
+                if (!anyOpt) {
+                    var any = document.createElement('option');
+                    any.value = '';
+                    any.textContent = 'Any';
+                    tagSel.appendChild(any);
+                }
                 tags.forEach(tag => {
                     var opt = document.createElement('option');
                     opt.value = tag.tag_name;
@@ -122,11 +130,16 @@ if (isset($_GET['submit'])) {
     function updateKeys(selectedKey) {
         var tagName = document.getElementById('tag').value;
         var clientKey = document.getElementById('client_key').value;
+        var keySel = document.getElementById('key');
+        keySel.innerHTML = '';
+        var any = document.createElement('option');
+        any.value = '';
+        any.textContent = 'Any';
+        keySel.appendChild(any);
+        if (tagName === '') return;
         fetch('?ajax=keys&tag=' + encodeURIComponent(tagName) + '&client_key=' + encodeURIComponent(clientKey))
             .then(r => r.json())
             .then(keys => {
-                var keySel = document.getElementById('key');
-                keySel.innerHTML = '';
                 keys.forEach(k => {
                     var opt = document.createElement('option');
                     opt.value = k.key_name;
@@ -160,15 +173,20 @@ if (isset($_GET['submit'])) {
         </div>
         <div class="form-row">
             <label for="tag">Tag:</label>
-            <select name="tag" id="tag"></select>
+            <select name="tag" id="tag">
+                <option value="">Any</option>
+            </select>
         </div>
         <div class="form-row">
             <label for="key">Key:</label>
-            <select name="key" id="key"></select>
+            <select name="key" id="key">
+                <option value="">Any</option>
+            </select>
         </div>
         <div class="form-row">
             <label for="since">Since:</label>
             <input type="datetime-local" name="since" id="since" value="<?=isset($_GET['since'])?h($_GET['since']):''?>">
+            <button type="button" onclick="document.getElementById('since').value='';">Any</button>
         </div>
         <input name="submit" type="submit" value="Search">
         <a href="?<?=http_build_query(array_merge($_GET, ['csv'=>'true']))?>">Export as CSV</a>

@@ -6,17 +6,19 @@ require_once("config.php");
 require_once("lib/Argh/src/Argh.php");
 require_once("functions.php");
 
+use \xionic\Argh\Argh;
+
 if(isset($_GET["action"]))
 	$action = $_GET["action"];
 else 
 	send_error("missing argument action");
 
 //ensure we have a tag and client_key
-$av = get_arg_validator();
-$args = $av->validateArgs($_GET, array(
-	"client_key" => array("notblank"),
-	"tag" => array("notblank"),
-));
+$args = $_GET;
+Argh::validate($args, [
+    "client_key" => ["notblank"],
+    "tag" => ["notblank"],
+]);
 
 print_debug("Request received for action: " . $action . " (" . get_req_type() .")", INFO);
 print_debug("REQUEST: " . var_export($_REQUEST, true), DEBUG);
