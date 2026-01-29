@@ -3,7 +3,7 @@
 $req_start_time = microtime(true);
 
 require_once("config.php");
-require_once("lib/PHPArgValidator/PHPArgValidator.class.php");
+require_once("lib/Argh/src/Argh.php");
 require_once("functions.php");
 
 if(isset($_GET["action"]))
