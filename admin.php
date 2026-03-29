@@ -8,22 +8,6 @@ use \xionic\Argh\Argh;
 // Helper: escape output
 function h($str) { return htmlspecialchars($str, ENT_QUOTES, 'UTF-8'); }
 
-// Handle CSV export
-if (isset($_GET["csv"])) {
-    header('Content-type: text/csv');
-    header('Content-disposition: attachment;filename=' . (isset($_GET['client_key']) ? $_GET['client_key'] : 'export') . ".csv");
-    if (count($rows)) {
-        $out = fopen('php://output', 'w');
-        fputcsv($out, array_keys($rows[0]));
-        foreach ($rows as $row) {
-            $row['created'] = (!isset($_GET['timestamp']) && isset($row['created'])) ? date('Y/m/d H:i:s', $row['created']) : $row['created'];
-            fputcsv($out, $row);
-        }
-        fclose($out);
-    }
-    exit;
-}
-
 // Handle AJAX requests for dependent dropdowns
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'tags' && isset($_GET['client_key'])) {
     header('Content-Type: application/json');
@@ -83,6 +67,22 @@ if (isset($_GET['submit'])) {
     } catch (PDOException $e) {
         die("Database error: " . h($e->getMessage()));
     }
+}
+
+// CSV export logic (must come before any HTML output)
+if (isset($_GET["csv"])) {
+    header('Content-type: text/csv');
+    header('Content-disposition: attachment;filename=' . (isset($_GET['client_key']) ? $_GET['client_key'] : 'export') . ".csv");
+    if (count($rows)) {
+        $out = fopen('php://output', 'w');
+        fputcsv($out, array_keys($rows[0]));
+        foreach ($rows as $row) {
+            $row['created'] = (!isset($_GET['timestamp']) && isset($row['created'])) ? date('Y/m/d H:i:s', $row['created']) : $row['created'];
+            fputcsv($out, $row);
+        }
+        fclose($out);
+    }
+    exit;
 }
 
 ?><!DOCTYPE html>
@@ -270,21 +270,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header("Location: " . strtok($_SERVER['REQUEST_URI'], '?') . '?' . $_SERVER['QUERY_STRING']);
         exit;
     }
-}
-
-// CSV export logic (refactored)
-if (isset($_GET["csv"])) {
-    header('Content-type: text/csv');
-    header('Content-disposition: attachment;filename=' . (isset($_GET['client_key']) ? $_GET['client_key'] : 'export') . ".csv");
-    if (count($rows)) {
-        $out = fopen('php://output', 'w');
-        fputcsv($out, array_keys($rows[0]));
-        foreach ($rows as $row) {
-            $row['created'] = (!isset($_GET['timestamp']) && isset($row['created'])) ? date('Y/m/d H:i:s', $row['created']) : $row['created'];
-            fputcsv($out, $row);
-        }
-        fclose($out);
-    }
-    exit;
 }
 ?>

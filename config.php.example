@@ -18,4 +18,17 @@ define("VERBOSE",2);
 define("INFO",1);
 
 define("LOG_LEVEL",INFO);
+
+/* Admin/auth settings --------------------------------------------------
+ * Set ADMIN_REQUIRE_AUTH to true to require login for `admin.php`.
+ * ADMIN_USERNAME defaults to 'admin'.
+ * ADMIN_PASSWORD_HASH is set using password_hash(); change to a static
+ * hash if you want a stable password across requests.
+ * Set ADMIN_LAN_ONLY to true to restrict access to RFC1918 addresses.
+ */
+if (!defined('ADMIN_REQUIRE_AUTH')) define('ADMIN_REQUIRE_AUTH', true);
+if (!defined('ADMIN_USERNAME')) define('ADMIN_USERNAME', 'admin');
+if (!defined('ADMIN_PASSWORD_HASH')) define('ADMIN_PASSWORD_HASH', password_hash('admin', PASSWORD_DEFAULT));
+if (!defined('ADMIN_LAN_ONLY')) define('ADMIN_LAN_ONLY', true);
+
 ?>
