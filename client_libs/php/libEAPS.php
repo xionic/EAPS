@@ -3,6 +3,11 @@
 require_once("EAPSValueResponse.class.php");
 require_once("EAPSKeysResponse.class.php");
 
+// Backwards-compatible alias: some code instantiates `EAPS_Client` (capital C)
+if (!class_exists('EAPS_Client') && class_exists('EAPS_client')) {
+    class EAPS_Client extends EAPS_client {}
+}
+
 class EAPS_client{
 	private $url = null;
 	private $client_key = null;
@@ -22,8 +27,14 @@ class EAPS_client{
 		if($since)
 			$get["since"] = $since;
 		
-		$json = $this->EAPS_req("values", $get);		
-		$values = json_decode($json, true);		
+		$json = $this->EAPS_req("values", $get);
+		$values = json_decode($json, true);
+		if (!is_array($values)) {
+			$values = ["keys" => [], "data" => []];
+		} else {
+			if (!isset($values["keys"])) $values["keys"] = [];
+			if (!isset($values["data"])) $values["data"] = [];
+		}
 		$response = new EAPSValueResponse($values["keys"], $values["data"]);
 		
 		return $response;
@@ -37,8 +48,13 @@ class EAPS_client{
 		);		
 		
 		$json = $this->EAPS_req("value", $get);
-		
 		$value = json_decode($json, true);
+		if (!is_array($value)) {
+			$value = ["keys" => [], "data" => []];
+		} else {
+			if (!isset($value["keys"])) $value["keys"] = [];
+			if (!isset($value["data"])) $value["data"] = [];
+		}
 		$response = new EAPSValueResponse($value["keys"], $value["data"]);
 		
 		return $response;
@@ -48,8 +64,13 @@ class EAPS_client{
 		$get = array("tag" => $tag);
 		
 		$json = $this->EAPS_req("keys", $get);		
-		$values = json_decode($json, true);		
-		$response = new EAPSKeysResponse($values["keys"]);
+		$values = json_decode($json, true);
+		if (!is_array($values) || !isset($values["keys"])) {
+			$keys = [];
+		} else {
+			$keys = $values["keys"];
+		}
+		$response = new EAPSKeysResponse($keys);
 		return $response;
 	}
 	
