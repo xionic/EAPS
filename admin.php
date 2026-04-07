@@ -265,9 +265,10 @@ if (isset($_GET["csv"])) {
                 <tr>
                     <td><?=h($client['client_id'])?></td>
                     <td><?=h($client['client_name'])?></td>
-                    <td><code><?=h(substr($client['client_key'], 0, 8)) . '…'?></code></td>
+                    <td><code><?=h(substr($client['client_key'], 0, 8)) . '...'?></code></td>
                     <td>
-                        <form method="POST" style="display:inline" onsubmit="return confirm('Delete client &quot;<?=h($client['client_name'])?>>&quot; and ALL its data? This cannot be undone.')">
+                        <form method="POST" style="display:inline" onsubmit="return confirm(this.dataset.msg);"
+                              data-msg="Delete client '<?=h($client['client_name'])?>' and ALL its data? This cannot be undone.">
                             <input type="hidden" name="delete_client" value="<?=h($client['client_id'])?>">
                             <button type="submit">Delete</button>
                         </form>
