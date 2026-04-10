@@ -54,12 +54,12 @@ Error responses return a non-2xx HTTP status and JSON:
 
 Returns all tags that belong to the authenticated client.
 
-**Required parameters:** `client_key`, `tag` *(the `tag` parameter is validated as non-blank by the API but its value is not used to filter the results – any non-empty string is accepted)*
+**Required parameters:** `client_key`
 
 **Example:**
 
 ```bash
-curl "https://example.com/EAPS/?action=tags&client_key=YOUR_KEY&tag=_"
+curl "https://example.com/EAPS/?action=tags&client_key=YOUR_KEY"
 ```
 
 **Example response:**
