@@ -13,11 +13,10 @@ if(isset($_GET["action"]))
 else 
 	send_error("missing argument action");
 
-//ensure we have a tag and client_key
+//ensure we have a client_key; tag is validated per-action where needed
 $args = $_GET;
 Argh::validate($args, [
     "client_key" => ["notblank"],
-    "tag" => ["notblank"],
 ]);
 
 print_debug("Request received for action: " . $action . " (" . get_req_type() .")", INFO);

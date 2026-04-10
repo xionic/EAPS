@@ -16,7 +16,8 @@ function get_clients(){
 function handle_tags_req(){
 	switch (get_req_type()){
 		case "GET":
-			$tags = get_tags();
+			$tags = get_tags($_GET["client_key"]);
+			send_response($tags, null);
 			break;
 		case "POST": //Not applicable, tags are inserted when values are inserted.
 			send_error("Cannot directly add a key. New keys are created as required when values are inserted", 400);
