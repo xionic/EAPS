@@ -35,6 +35,9 @@ switch ($action){
 	case "values":
 		handle_values_req();
 		break;
+	case "delete":
+		handle_delete_req();
+		break;
 	default:
 		send_error("Invalid action");
 		break;

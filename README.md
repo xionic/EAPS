@@ -2,6 +2,10 @@
 
 EAPS is a lightweight PHP key-value store designed for simple, HTTP-based storage and retrieval of named values. Data is organised under **clients** (identified by a `client_key`) and grouped into named **tags**. Within each tag, any number of **key/value pairs** can be stored; every write creates a new historical record so the full value history is always available, and the most recent value is also quickly accessible in a single call.
 
+Authentication is intentionally kept simple: the `client_key` (API key) is the **only credential required**. There are no sessions, no OAuth flows, and no login pages – just include your key in every request. This is a core part of what makes EAPS "Easy".
+
+> **⚠ Security note – Admin page:** `admin.php` provides full read/write access to all stored data and is **not authenticated by default**. Before exposing your EAPS installation to a network, restrict access to `admin.php` via your web server configuration (e.g. HTTP Basic Auth, IP allowlist) or use the `ADMIN_REQUIRE_AUTH` / `ADMIN_LAN_ONLY` settings in `config.php`. See the [Admin Interface](#admin-interface) section for details.
+
 ## Requirements
 
 - PHP 7.4+
@@ -25,8 +29,9 @@ All requests are made to `index.php`. Every request requires the following query
 | Parameter    | Description                                       |
 |--------------|---------------------------------------------------|
 | `client_key` | The API key that identifies and authenticates the client |
-| `tag`        | The tag (namespace) to operate on                 |
-| `action`     | One of `tags`, `keys`, `value`, `values`          |
+| `action`     | One of `tags`, `keys`, `value`, `values`, `delete` |
+
+Most actions also require a `tag` parameter – see each action's documentation below.
 
 ### Response envelope
 
@@ -100,7 +105,7 @@ curl "https://example.com/EAPS/?action=keys&client_key=YOUR_KEY&tag=sensors"
 
 ---
 
-### `GET ?action=value&key=<key>`
+### `GET ?action=value`
 
 Returns the **latest** stored value for a single key within the given tag.
 
@@ -127,7 +132,7 @@ If no value has been stored yet, both `keys` and `data` entries will be `null`.
 
 ---
 
-### `POST ?action=value&tag=<tag>`
+### `POST ?action=value`
 
 Stores a new value for a key. Tags and keys are created automatically if they do not already exist.
 
@@ -147,7 +152,7 @@ curl -X POST "https://example.com/EAPS/?action=value&client_key=YOUR_KEY&tag=sen
 
 ### `GET ?action=values`
 
-Returns **all historical values** (every recorded entry, not just the latest) for a tag, optionally filtered by key and/or a start time. Results are ordered newest first.
+Returns **all historical values** (every recorded entry, not just the latest) for a tag, optionally filtered by key and/or a time window. Results are ordered newest first.
 
 > **Tip:** Use `action=value` when you only need the current value of a single key. Use `action=values` to retrieve the full history of one or all keys under a tag.
 
@@ -157,7 +162,8 @@ Returns **all historical values** (every recorded entry, not just the latest) fo
 | Parameter | Description |
 |-----------|-------------|
 | `key`     | Restrict results to a single key name |
-| `since`   | Unix timestamp **or** any date string accepted by PHP `strtotime()` (e.g. `"yesterday"`, `"2024-01-01"`) |
+| `start`   | Only return values with a `created` timestamp **≥** this value. Accepts a Unix timestamp or any date string accepted by PHP `strtotime()` (e.g. `"yesterday"`, `"2024-01-01"`) |
+| `end`     | Only return values with a `created` timestamp **≤** this value. Same format as `start` |
 
 **Examples:**
 
@@ -168,11 +174,11 @@ curl "https://example.com/EAPS/?action=values&client_key=YOUR_KEY&tag=sensors"
 # History for one key
 curl "https://example.com/EAPS/?action=values&client_key=YOUR_KEY&tag=sensors&key=temperature"
 
-# History for one key since a specific date
-curl "https://example.com/EAPS/?action=values&client_key=YOUR_KEY&tag=sensors&key=temperature&since=2024-01-01"
+# History for one key from a specific date onwards
+curl "https://example.com/EAPS/?action=values&client_key=YOUR_KEY&tag=sensors&key=temperature&start=2024-01-01"
 
-# History since a Unix timestamp
-curl "https://example.com/EAPS/?action=values&client_key=YOUR_KEY&tag=sensors&since=1704067200"
+# History within a timestamp range
+curl "https://example.com/EAPS/?action=values&client_key=YOUR_KEY&tag=sensors&start=1704067200&end=1706745600"
 ```
 
 **Example response:**
@@ -186,6 +192,26 @@ curl "https://example.com/EAPS/?action=values&client_key=YOUR_KEY&tag=sensors&si
     { "key": "temperature", "value_id": 42, "value": "21.5", "created": 1712345678 }
   ]
 }
+```
+
+---
+
+### `POST ?action=delete`
+
+Deletes a single value record by its `value_id`.
+
+> **This action is disabled by default** to preserve the immutable-record property of the store. Enable it by setting `ALLOW_DELETE` to `true` in `config.php`. When disabled, the endpoint returns HTTP 403.
+
+**Required parameters (query string):** `client_key`  
+**Required parameters (POST body):** `value_id`
+
+**Returns:** HTTP 200 with an empty body on success, HTTP 404 if the value does not exist or does not belong to this client.
+
+**Example:**
+
+```bash
+curl -X POST "https://example.com/EAPS/?action=delete&client_key=YOUR_KEY" \
+     --data "value_id=42"
 ```
 
 ---
@@ -238,9 +264,9 @@ Fetches the latest value for a single key.
 $response = $client->get_value("sensors", "temperature");
 ```
 
-#### `get_values(string $tag [, string $key [, string|int $since]]): EAPSValueResponse`
+#### `get_values(string $tag [, string $key [, string|int $since [, string|int $end]]]): EAPSValueResponse`
 
-Fetches **all historical values** for a tag, with optional key and time filters.
+Fetches **all historical values** for a tag, with optional key and time-window filters.
 
 ```php
 // All history for a tag
@@ -252,6 +278,9 @@ $response = $client->get_values("sensors", "temperature");
 // History since a date/time string or Unix timestamp
 $response = $client->get_values("sensors", false, "yesterday");
 $response = $client->get_values("sensors", "temperature", 1704067200);
+
+// History within a time window
+$response = $client->get_values("sensors", false, "2024-01-01", "2024-01-31");
 ```
 
 #### `get_keys(string $tag): EAPSKeysResponse`
@@ -268,6 +297,14 @@ Stores a new value for a key.
 
 ```php
 $client->add_value("sensors", "temperature", "21.5");
+```
+
+#### `delete_value(int $value_id): void`
+
+Deletes a single value record by its `value_id`. Requires `ALLOW_DELETE` to be enabled in the server's `config.php`; otherwise the server will return HTTP 403.
+
+```php
+$client->delete_value(42);
 ```
 
 ---

@@ -215,26 +215,40 @@ function handle_values_req(){
 			Argh::validate($args, [
 				"tag" => ["notblank"],
 				"key" => ["optional", "notblank"],
-				"since" => ["optional", "notblank"], // either a timestamp, or one of (start_of_day)
+				"start" => ["optional", "notblank"],
+				"end" => ["optional", "notblank"],
 			]);
 			$tag = $args["tag"];
-			$since = null;
+			$start = null;
+			$end = null;
 			$key = null;
-			if(isset($args["since"])){
-				$since = $args["since"];
-				if(!is_numeric($since)){
+			// "since" is an undocumented backward-compat synonym for "start"
+			$start_val = isset($args["start"]) ? $args["start"] : (isset($args["since"]) ? $args["since"] : null);
+			if($start_val !== null){
+				if(!is_numeric($start_val)){
 					//allow for any date strings parsable by strtotime
-					$since = strtotime($since);
-					if($since === false){
-						send_error("value for since must be a timestamp, or a string parsable by strtotime");
+					$start_val = strtotime($start_val);
+					if($start_val === false){
+						send_error("value for start must be a timestamp, or a string parsable by strtotime");
 					}
 				}
+				$start = $start_val;
+			}
+			if(isset($args["end"])){
+				$end_val = $args["end"];
+				if(!is_numeric($end_val)){
+					$end_val = strtotime($end_val);
+					if($end_val === false){
+						send_error("value for end must be a timestamp, or a string parsable by strtotime");
+					}
+				}
+				$end = $end_val;
 			}
 			if(isset($args["key"]))
 				$key = $args["key"];
 			
 			
-			$values = get_values($tag, $key, $since);
+			$values = get_values($tag, $key, $start, $end);
 
 			$keys = array();
 			foreach($values as $v){
@@ -256,20 +270,23 @@ function handle_values_req(){
 /* Retrieve value(s) from the store
 	if key_name is omitted or is null, then all key/value datasets for the tag are returned.
 */
-function get_values($tag_name, $key_name = null, $since = null){
+function get_values($tag_name, $key_name = null, $start = null, $end = null){
 	
-	print_debug("retriving values for tag: '$tag_name' key: '$key_name' since: '$since'", DEBUG);
+	print_debug("retrieving values for tag: '$tag_name' key: '$key_name' start: '$start' end: '$end'", DEBUG);
 	
 	$client_id = get_current_client_id();
 	
 	$db = get_db_connection();
 	
 	$key_sql= "";
-	$since_sql= "";
+	$start_sql = "";
+	$end_sql = "";
 	if($key_name != null)		
 		$key_sql = "AND key_name = :key_name";
-	if($since != null)
-		$since_sql = "AND created > :since";
+	if($start != null)
+		$start_sql = "AND created >= :start";
+	if($end != null)
+		$end_sql = "AND created <= :end";
 		
 	$sql = "SELECT
 				key_name as `key`, value_id, value_data as value, created
@@ -281,24 +298,70 @@ function get_values($tag_name, $key_name = null, $since = null){
 				client_id = :client_id
 				AND tag_name = :tag_name
 				$key_sql
-				$since_sql
+				$start_sql
+				$end_sql
 			ORDER BY 
 				tValue.created DESC
 							
 	";
-					
+				
 	$stmt = $db->prepare($sql);
 	$stmt->bindValue(":client_id",$client_id,PDO::PARAM_INT);
 	$stmt->bindValue(":tag_name",$tag_name,PDO::PARAM_STR);
 	if($key_name != null)
 		$stmt->bindValue(":key_name",$key_name,PDO::PARAM_STR);
-	if($since != null)
-		$stmt->bindValue(":since",$since,PDO::PARAM_INT);
+	if($start != null)
+		$stmt->bindValue(":start",$start,PDO::PARAM_INT);
+	if($end != null)
+		$stmt->bindValue(":end",$end,PDO::PARAM_INT);
 	$stmt->execute();
 	
 	$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 	return $rows;
+}
+
+function handle_delete_req(){
+	if (!defined('ALLOW_DELETE') || !ALLOW_DELETE) {
+		send_error("Delete is not enabled on this server", 403);
+	}
+	switch (get_req_type()){
+		case "POST":
+			$args = $_REQUEST;
+			Argh::validate($args, [
+				"value_id" => ["notblank"],
+			]);
+			$value_id = intval($args["value_id"]);
+			delete_value($value_id);
+			break;
+		default:
+			send_error("Delete requires a POST request", 405);
+	}
+}
+
+function delete_value($value_id){
+	$client_id = get_current_client_id();
+
+	// Only delete the record if it belongs to the authenticated client
+	$db = get_db_connection();
+	$stmt = $db->prepare(
+		"DELETE FROM tValue
+		WHERE value_id = :value_id
+		AND key_id IN (
+			SELECT key_id FROM tKey
+			INNER JOIN tTag ON (tKey.tag_id = tTag.tag_id)
+			WHERE tTag.client_id = :client_id
+		)"
+	);
+	$stmt->bindValue(":value_id", $value_id, PDO::PARAM_INT);
+	$stmt->bindValue(":client_id", $client_id, PDO::PARAM_INT);
+	$stmt->execute();
+
+	if ($stmt->rowCount() === 0) {
+		send_error("Value not found or does not belong to this client", 404);
+	}
+
+	rest_response("", 200);
 }
 
 function get_client_id($client_key){
