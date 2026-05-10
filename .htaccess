@@ -2,9 +2,3 @@
 #RewriteRule ^(.*)$ test$0 [END]
 #RewriteCond %{QUERY_STRING} (.*)
 #RewriteRule ^.*EAPS.*$ testing [R]
-<Files admin.php>
-    AuthType Basic
-    AuthName "Restricted Content"
-    AuthUserFile /etc/apache2/.htpasswd
-    Require valid-user
-</Files>

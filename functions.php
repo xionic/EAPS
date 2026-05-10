@@ -406,4 +406,3 @@ function send_error($message, $code = 400){
 	exit();
 }
 
-?>

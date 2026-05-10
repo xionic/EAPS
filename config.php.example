@@ -22,13 +22,13 @@ define("LOG_LEVEL",INFO);
 /* Admin/auth settings --------------------------------------------------
  * Set ADMIN_REQUIRE_AUTH to true to require login for `admin.php`.
  * ADMIN_USERNAME defaults to 'admin'.
- * ADMIN_PASSWORD_HASH is set using password_hash(); change to a static
- * hash if you want a stable password across requests.
+ * ADMIN_PASSWORD_HASH is a bcrypt hash — use setup.php to generate one, or:
+ *   php -r "echo password_hash('yourpassword', PASSWORD_BCRYPT, ['cost'=>12]);"
  * Set ADMIN_LAN_ONLY to true to restrict access to RFC1918 addresses.
  */
 if (!defined('ADMIN_REQUIRE_AUTH')) define('ADMIN_REQUIRE_AUTH', true);
 if (!defined('ADMIN_USERNAME')) define('ADMIN_USERNAME', 'admin');
-if (!defined('ADMIN_PASSWORD_HASH')) define('ADMIN_PASSWORD_HASH', password_hash('admin', PASSWORD_DEFAULT));
+if (!defined('ADMIN_PASSWORD_HASH')) define('ADMIN_PASSWORD_HASH', '$2y$12$REPLACE_WITH_YOUR_HASH');
 if (!defined('ADMIN_LAN_ONLY')) define('ADMIN_LAN_ONLY', true);
 
 ?>
