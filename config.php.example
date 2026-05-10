@@ -31,4 +31,11 @@ if (!defined('ADMIN_USERNAME')) define('ADMIN_USERNAME', 'admin');
 if (!defined('ADMIN_PASSWORD_HASH')) define('ADMIN_PASSWORD_HASH', '$2y$12$REPLACE_WITH_YOUR_HASH');
 if (!defined('ADMIN_LAN_ONLY')) define('ADMIN_LAN_ONLY', true);
 
+/* Delete action ---------------------------------------------------------
+ * Set ALLOW_DELETE to true to enable the DELETE action via the API.
+ * When false (default), the immutable-record aspect of the store is
+ * preserved and DELETE requests will be rejected with HTTP 403.
+ */
+if (!defined('ALLOW_DELETE')) define('ALLOW_DELETE', false);
+
 ?>

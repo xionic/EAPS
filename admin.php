@@ -455,9 +455,7 @@ if (isset($_GET['csv'])) {
         text-transform: uppercase; letter-spacing: .06em;
         white-space: nowrap;
         border-bottom: 2px solid var(--border);
-        position: sticky; top: 52px; /* below fixed header */
         background: var(--surface2);
-        z-index: 10;
     }
     tbody tr { border-bottom: 1px solid var(--border-soft); transition: background .1s; }
     tbody tr:last-child { border-bottom: none; }
@@ -528,7 +526,6 @@ if (isset($_GET['csv'])) {
             border-radius: var(--r);
         }
         .bulk-bar.show { transform: translateY(0); }
-        th { position: static; }
     }
     </style>
 </head>
