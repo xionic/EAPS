@@ -17,7 +17,7 @@ class EAPS_client{
 		$this->client_key = $c;		
 	}
 
-	public function get_values($tag, $key = false, $since = false){
+	public function get_values($tag, $key = false, $since = false, $end = false){
 		
 		$get = array(
 			"tag" => $tag
@@ -25,7 +25,9 @@ class EAPS_client{
 		if($key)
 			$get["key"] = $key;
 		if($since)
-			$get["since"] = $since;
+			$get["start"] = $since; // maps to the "start" parameter (server also accepts legacy "since")
+		if($end)
+			$get["end"] = $end;
 		
 		$json = $this->EAPS_req("values", $get);
 		$values = json_decode($json, true);
@@ -78,6 +80,11 @@ class EAPS_client{
 		$get = array("tag" => $tag);
 		$post = array("key" => $key, "value" => $value);
 		$this->EAPS_req("value", $get, $post);
+	}
+
+	public function delete_value($value_id){
+		$post = array("value_id" => $value_id);
+		$this->EAPS_req("delete", array(), $post);
 	}
 	
 	//make http req usign curl to the EAPS service - using the action $action, get vars in $query_string, post vars in $post

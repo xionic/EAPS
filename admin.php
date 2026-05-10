@@ -8,6 +8,80 @@ use \xionic\Argh\Argh;
 // Helper: escape output
 function h($str) { return htmlspecialchars($str, ENT_QUOTES, 'UTF-8'); }
 
+// Handle client add/delete (must be before any HTML output)
+$new_client_key = null;
+$client_action_error = null;
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['add_client'])) {
+        $client_name = trim($_POST['client_name'] ?? '');
+        if ($client_name === '') {
+            $client_action_error = "Client name cannot be empty.";
+        } else {
+            // Generate a cryptographically secure random API key (64 hex chars = 32 bytes)
+            $generated_key = bin2hex(random_bytes(32));
+            try {
+                $db = get_db_connection();
+                $stmt = $db->prepare("INSERT INTO tClient (client_key, client_name) VALUES (:client_key, :client_name)");
+                $stmt->bindValue(":client_key", $generated_key, PDO::PARAM_STR);
+                $stmt->bindValue(":client_name", $client_name, PDO::PARAM_STR);
+                $stmt->execute();
+                $new_client_key = $generated_key;
+            } catch (PDOException $e) {
+                if ($e->getCode() == '23000') {
+                    $client_action_error = "A client with that name already exists.";
+                } else {
+                    $client_action_error = "Database error: " . h($e->getMessage());
+                }
+            }
+        }
+    } elseif (isset($_POST['delete_client'])) {
+        $del_client_id = intval($_POST['delete_client']);
+        try {
+            $db = get_db_connection();
+            $stmt = $db->prepare("DELETE FROM tClient WHERE client_id = :client_id");
+            $stmt->bindValue(":client_id", $del_client_id, PDO::PARAM_INT);
+            $stmt->execute();
+        } catch (PDOException $e) {
+            $client_action_error = "Database error: " . h($e->getMessage());
+        }
+        if (!$client_action_error) {
+            header("Location: " . strtok($_SERVER['REQUEST_URI'], '?') . '#clients');
+            exit;
+        }
+    } elseif (isset($_POST['delete'])) {
+        // Delete a value record
+        $value_id = intval($_POST['delete']);
+        $db = get_db_connection();
+        $stmt = $db->prepare("DELETE FROM tValue WHERE value_id = :value_id");
+        $stmt->bindValue(":value_id", $value_id, PDO::PARAM_INT);
+        $stmt->execute();
+        header("Location: " . strtok($_SERVER['REQUEST_URI'], '?') . '?' . $_SERVER['QUERY_STRING']);
+        exit;
+    } elseif (isset($_POST['save']) && isset($_POST['edit'])) {
+        // Edit a value record
+        $value_id = intval($_POST['save']);
+        $db = get_db_connection();
+        $fields = $_POST['edit'][$value_id] ?? [];
+        if (isset($fields['value'])) {
+            $stmt = $db->prepare("UPDATE tValue SET value_data = :value WHERE value_id = :value_id");
+            $stmt->bindValue(":value", $fields['value'], PDO::PARAM_STR);
+            $stmt->bindValue(":value_id", $value_id, PDO::PARAM_INT);
+            $stmt->execute();
+        }
+        if (isset($fields['created'])) {
+            $created = strtotime($fields['created']);
+            if ($created) {
+                $stmt = $db->prepare("UPDATE tValue SET created = :created WHERE value_id = :value_id");
+                $stmt->bindValue(":created", $created, PDO::PARAM_INT);
+                $stmt->bindValue(":value_id", $value_id, PDO::PARAM_INT);
+                $stmt->execute();
+            }
+        }
+        header("Location: " . strtok($_SERVER['REQUEST_URI'], '?') . '?' . $_SERVER['QUERY_STRING']);
+        exit;
+    }
+}
+
 // Handle AJAX requests for dependent dropdowns
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'tags' && isset($_GET['client_key'])) {
     header('Content-Type: application/json');
@@ -97,6 +171,10 @@ if (isset($_GET["csv"])) {
         th { background: #eee; }
         select, input[type=datetime-local] { padding: 4px; margin: 4px 0; }
         .form-row { margin-bottom: 1em; }
+        .section { margin-bottom: 2em; border: 1px solid #ccc; padding: 1em; border-radius: 4px; }
+        .new-key-box { background: #e8f5e9; border: 1px solid #4caf50; padding: 1em; margin: 1em 0; border-radius: 4px; }
+        .new-key-box code { font-size: 1.1em; word-break: break-all; }
+        .error-box { background: #fdecea; border: 1px solid #f44336; padding: 0.75em 1em; margin: 1em 0; border-radius: 4px; color: #b71c1c; }
     </style>
     <script>
     // AJAX for dependent dropdowns
@@ -162,6 +240,58 @@ if (isset($_GET["csv"])) {
 </head>
 <body>
     <h1>EAPS Admin</h1>
+
+    <!-- ===== Manage Clients ===== -->
+    <div class="section" id="clients">
+        <h2>Manage Clients</h2>
+
+        <?php if ($client_action_error): ?>
+            <div class="error-box"><?=h($client_action_error)?></div>
+        <?php endif; ?>
+
+        <?php if ($new_client_key): ?>
+            <div class="new-key-box">
+                <strong>Client created successfully.</strong> Copy the API key below – it will not be shown again:<br>
+                <code><?=h($new_client_key)?></code>
+            </div>
+        <?php endif; ?>
+
+        <table>
+            <thead>
+                <tr><th>ID</th><th>Name</th><th>API Key</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+            <?php foreach (get_clients() as $client): ?>
+                <tr>
+                    <td><?=h($client['client_id'])?></td>
+                    <td><?=h($client['client_name'])?></td>
+                    <td><code><?=h(substr($client['client_key'], 0, 8)) . '...'?></code></td>
+                    <td>
+                        <form method="POST" style="display:inline" onsubmit="return confirm(this.dataset.msg);"
+                              data-msg="Delete client '<?=h($client['client_name'])?>' and ALL its data? This cannot be undone.">
+                            <input type="hidden" name="delete_client" value="<?=h($client['client_id'])?>">
+                            <button type="submit">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+
+        <h3>Add Client</h3>
+        <form method="POST">
+            <div class="form-row">
+                <label for="client_name">Client name:</label>
+                <input type="text" name="client_name" id="client_name" required placeholder="my-app">
+            </div>
+            <button type="submit" name="add_client" value="1">Create Client &amp; Generate API Key</button>
+        </form>
+        <p><em>The API key is generated automatically as a cryptographically secure random value. It is shown only once after creation.</em></p>
+    </div>
+
+    <!-- ===== Search Values ===== -->
+    <div class="section">
+    <h2>Search Values</h2>
     <form method="GET" id="searchForm">
         <div class="form-row">
             <label for="client_key">Client name:</label>
@@ -233,42 +363,6 @@ if (isset($_GET["csv"])) {
             </tbody>
         </table>
     <?php endif; ?>
+    </div><!-- /.section Search Values -->
 </body>
 </html>
-<?php
-// Handle edit and delete actions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    require_once("functions.php");
-    $db = get_db_connection();
-    if (isset($_POST['delete'])) {
-        $value_id = intval($_POST['delete']);
-        $stmt = $db->prepare("DELETE FROM tValue WHERE value_id = :value_id");
-        $stmt->bindValue(":value_id", $value_id, PDO::PARAM_INT);
-        $stmt->execute();
-        header("Location: " . strtok($_SERVER['REQUEST_URI'], '?') . '?' . $_SERVER['QUERY_STRING']);
-        exit;
-    }
-    if (isset($_POST['save']) && isset($_POST['edit'])) {
-        $value_id = intval($_POST['save']);
-        $fields = $_POST['edit'][$value_id];
-        if (isset($fields['value'])) {
-            $stmt = $db->prepare("UPDATE tValue SET value_data = :value WHERE value_id = :value_id");
-            $stmt->bindValue(":value", $fields['value'], PDO::PARAM_STR);
-            $stmt->bindValue(":value_id", $value_id, PDO::PARAM_INT);
-            $stmt->execute();
-        }
-        if (isset($fields['created'])) {
-            $created = strtotime($fields['created']);
-            if ($created) {
-                $stmt = $db->prepare("UPDATE tValue SET created = :created WHERE value_id = :value_id");
-                $stmt->bindValue(":created", $created, PDO::PARAM_INT);
-                $stmt->bindValue(":value_id", $value_id, PDO::PARAM_INT);
-                $stmt->execute();
-            }
-        }
-        // Use a redirect with header('Location: ...') and then exit to ensure a true POST-redirect-GET
-        header("Location: " . strtok($_SERVER['REQUEST_URI'], '?') . '?' . $_SERVER['QUERY_STRING']);
-        exit;
-    }
-}
-?>
