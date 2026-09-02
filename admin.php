@@ -134,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         if (isset($fields['created'])) {
             $created = strtotime($fields['created']);
-            if ($created) {
+            if ($created !== false) {
                 $stmt = $db->prepare("UPDATE tValue SET created = :created WHERE value_id = :value_id");
                 $stmt->bindValue(":created", $created, PDO::PARAM_INT);
                 $stmt->bindValue(":value_id", $value_id, PDO::PARAM_INT);
@@ -573,14 +573,14 @@ if (isset($_GET['csv'])) {
                     <div class="form-field">
                         <label for="after">After</label>
                         <div class="input-row">
-                            <input type="datetime-local" name="after" id="after" value="<?=isset($_GET['after'])?h($_GET['after']):''?>">
+                            <input type="datetime-local" step="1" name="after" id="after" value="<?=isset($_GET['after'])?h($_GET['after']):''?>">
                             <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('after').value=''">Any</button>
                         </div>
                     </div>
                     <div class="form-field">
                         <label for="before">Before</label>
                         <div class="input-row">
-                            <input type="datetime-local" name="before" id="before" value="<?=isset($_GET['before'])?h($_GET['before']):''?>">
+                            <input type="datetime-local" step="1" name="before" id="before" value="<?=isset($_GET['before'])?h($_GET['before']):''?>">
                             <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('before').value=''">Any</button>
                         </div>
                     </div>
@@ -660,7 +660,7 @@ if (isset($_GET['csv'])) {
                             <?php if ($k === 'value'): ?>
                                 <input type="text" name="edit[<?=h($row['value_id'])?>][value]" value="<?=h($v)?>" form="<?=h($fid)?>">
                             <?php elseif ($k === 'created'): ?>
-                                <input type="datetime-local" name="edit[<?=h($row['value_id'])?>][created]" value="<?=date('Y-m-d\TH:i:s', is_numeric($v) ? $v : strtotime($v))?>" form="<?=h($fid)?>">
+                                <input type="datetime-local" step="1" name="edit[<?=h($row['value_id'])?>][created]" value="<?=date('Y-m-d\TH:i:s', is_numeric($v) ? $v : strtotime($v))?>" form="<?=h($fid)?>">
                             <?php else: ?>
                                 <span class="mono"><?=h($v)?></span>
                             <?php endif; ?>
