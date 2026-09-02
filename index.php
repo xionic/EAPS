@@ -2,9 +2,9 @@
 
 $req_start_time = microtime(true);
 
-require_once("config.php");
-require_once("lib/Argh/src/Argh.php");
-require_once("functions.php");
+require_once(__DIR__ . "/config.php");
+require_once(__DIR__ . "/lib/Argh/src/Argh.php");
+require_once(__DIR__ . "/functions.php");
 
 use \xionic\Argh\Argh;
 
